@@ -7,59 +7,72 @@ use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    // 1. Чтение задач (с сортировкой и фильтрацией)
+    public function index(Request $request)
     {
-        //
+        $query = Task::query();
+
+        // Фильтрация по статусу
+        if ($request->has('status') && $request->status != 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // Сортировка
+        if ($request->has('sort')) {
+            switch ($request->sort) {
+                case 'date-new':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'date-old':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'alpha':
+                    $query->orderBy('title', 'asc');
+                    break;
+            }
+        } else {
+            $query->orderBy('created_at', 'desc'); // По умолчанию новые сверху
+        }
+
+        $tasks = $query->get();
+
+        return view('tasks.index', compact('tasks'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
+    // 2. Создание задачи
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'due_date' => 'nullable|date',
+        ]);
+
+        Task::create($validated);
+
+        return redirect()->route('tasks.index')->with('success', 'Задача успешно создана!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Task $task)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Task $task)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
+    // 3. Обновление задачи
     public function update(Request $request, Task $task)
     {
-        //
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'status' => 'required|in:pending,in-progress,done',
+        ]);
+
+        $task->update($validated);
+
+        return redirect()->route('tasks.index')->with('success', 'Задача обновлена!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // 4. Удаление задачи
     public function destroy(Task $task)
     {
-        //
+        $task->delete();
+
+        return redirect()->route('tasks.index')->with('success', 'Задача удалена!');
     }
 }
